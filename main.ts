@@ -35,6 +35,7 @@ function checkInvalidInput(lines: string[][]): void {
             console.error(`Line #${i + 1} has more columns than there are candidates.`);
         }
 
+        // Sort rankings from smallest to largest. Should be 1, 2, 3...
         const rankings = lines[i]!.filter(Boolean).map(x => +x).sort((a, b) => a - b);
         for (let j = 0; j < rankings.length; j++) {
             if (rankings[j] !== j + 1) {
@@ -85,6 +86,12 @@ function generateReport(csv: string): string {
 
     report += '# Instant Runoff Results\n\n';
 
+    /**
+     * Given a list of candidates and ballots, count up how many votes each
+     * candidate got and what percentage of the ballots that represents,
+     * and sort them so that the candidate with thehighest share of votes
+     * is first in the list.
+     */
     function getDistribution(candidates: Candidate[], ballots: Ballot[]): Distribution {
         const shares: Distribution = candidates.map(candidate => {
             const count = ballots.filter(v => v[0] === candidate).length;
@@ -95,12 +102,14 @@ function generateReport(csv: string): string {
                 percent: 100 * count / ballots.length,
             };
         });
+
+        // Sort by most votes first.
         return shares.sort((a, b) => b.count - a.count);
     }
 
     function printTable(distribution: Distribution): void {
         report += '| Candidate | Percent | Votes |\n';
-        report += '|---------- | ------- | ------|\n';
+        report += '| --------- | ------- | ----- |\n';
         for (const { candidate, count, percent } of distribution) {
             report += `| ${candidateNames[candidate]} | ${percent.toFixed(2)}% | ${count} |\n`;
         }
@@ -111,11 +120,14 @@ function generateReport(csv: string): string {
 
     report += '## Initial results (phase 1)\n\n';
 
+    // If any candidate already has over 50%, no instant runoff is necessary
     if (initialDistribution[0]!.percent > 50) {
         report += `"${candidateNames[initialDistribution[0]!.candidate]}" won right away with ${initialDistribution[0]!.percent.toFixed(2)}% of the vote!\n\n`;
         printTable(initialDistribution);
         return report;
     }
+
+    // We will need to do some runoffs
 
     report += 'No candidate surpassed the 50% threshold to win.\n\n';
     printTable(initialDistribution);
@@ -126,18 +138,23 @@ function generateReport(csv: string): string {
     let ballots: Ballot[] = initialBallots.map(ballot => [...ballot]);
     let distribution: Distribution = initialDistribution;
 
+    /**
+     * Removes the specified candidates from the list of candidates still in the running and removes
+     * those candidates from all ballots. Any ballot that becomes empty is removed from the list of
+     * ballots. Mutates candidates and ballots.
+     */
     function removeCandidates(toRemove: Candidate[]) {
         candidates = candidates.filter(c => !toRemove.includes(c));
 
         for (let i = 0; i < ballots.length; i++) {
-            const vote = ballots[i]!;
-            for (let j = 0; j < vote.length; j++) {
-                if (toRemove.includes(vote[j]!)) {
-                    vote.splice(j, 1);
+            const ballot = ballots[i]!;
+            for (let j = 0; j < ballot.length; j++) {
+                if (toRemove.includes(ballot[j]!)) {
+                    ballot.splice(j, 1);
                     j--;
                 }
             }
-            if (vote.length === 0) {
+            if (ballot.length === 0) {
                 ballots.splice(i, 1);
                 i--;
             }
@@ -145,7 +162,7 @@ function generateReport(csv: string): string {
     }
 
     const candidatesWithNoVotes: Candidate[] = distribution
-        .filter(({ percent }) => percent === 0)
+        .filter(({ count }) => count === 0)
         .map(({ candidate }) => candidate);
 
     if (candidatesWithNoVotes.length > 0) {
@@ -160,13 +177,16 @@ function generateReport(csv: string): string {
 
     let phase = 1;
 
+    // Loop until there is a winner or a tie
     while (true) {
         phase += 1;
 
-        const lowestPercent = Math.min(...distribution.map(x => x.percent));
-        const candidatesToEliminate = distribution.filter(({ percent }) => percent === lowestPercent).map(({ candidate }) => candidate);
+        // First, eliminate all candidates that are tied for last place.
 
-        // Can't eliminate all the candidates!!!
+        const lowestCount = Math.min(...distribution.map(x => x.count));
+        const candidatesToEliminate = distribution.filter(({ count }) => count === lowestCount).map(({ candidate }) => candidate);
+
+        // If we're about the eliminate all the remaining candidates, it must be a tie.
         if (candidatesToEliminate.length === candidates.length) {
             report += `It's a ${candidates.length}-way tie!\n`;
             return report;
@@ -182,8 +202,11 @@ function generateReport(csv: string): string {
 
         report += `## Phase ${phase}\n\n`;
 
+        // Now that we have removed some candidates, run the numbers again
+
         distribution = getDistribution(candidates, ballots);
 
+        // If any candidate has a majority of the votes, that candidate wins and we're done.
         if (distribution[0]!.percent > 50) {
             report += `"${candidateNames[distribution[0]!.candidate]}" wins with ${distribution[0]!.percent.toFixed(2)}% of the vote.\n\n`;
             const eliminatedBallots = initialBallots.length - ballots.length;
@@ -191,6 +214,8 @@ function generateReport(csv: string): string {
             printTable(distribution);
             return report;
         }
+
+        // No winner found yet
 
         report += 'No candidate surpassed the 50% threshold to win.\n\n';
         const eliminatedBallots = initialBallots.length - ballots.length;
