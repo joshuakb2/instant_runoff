@@ -4,12 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "make": "tsgo && chmod +x main.js"
   },
   "type": "module",
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@mdpdf/mdpdf": "^0.1.4"
+    "@mdpdf/mdpdf": "^0.1.4",
+    "@types/node": "^25.3.0",
+    "@typescript/native-preview": "^7.0.0-dev.20260222.1"
   }
 }
