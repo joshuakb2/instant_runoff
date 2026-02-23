@@ -30,10 +30,10 @@ function generateReport(csv) {
     const candidateNames = lines[0];
     const initialVotes = lines.slice(1).map(arr => {
         const rankings = [];
-        for (const rank of ['1', '2', '3']) {
-            const candidate = arr.indexOf(rank);
-            if (candidate === -1) break;
-            rankings.push(candidate);
+        for (let candidate = 0; candidate <= arr.length; candidate++) {
+            const rank = arr[candidate];
+            if (!rank) continue;
+            rankings[+rank - 1] = candidate;
         }
         return rankings;
     });
@@ -72,10 +72,10 @@ function generateReport(csv) {
         return report;
     }
 
-    report += 'No candidate reached the 50% threshold to win.\n\n';
+    report += 'No candidate surpassed the 50% threshold to win.\n\n';
     printTable(initialDistribution);
     report += '\n';
-    report += `${initialVotes.length} ballots were cast.\n`;
+    report += `${initialVotes.length} ballots were cast.\n\n`;
 
     let candidates = JSON.parse(JSON.stringify(initialCandidates));
     let votes = JSON.parse(JSON.stringify(initialVotes));
@@ -121,6 +121,12 @@ function generateReport(csv) {
         const lowestPercent = Math.min(...distribution.map(x => x.percent));
         const candidatesToEliminate = distribution.filter(({ percent }) => percent === lowestPercent).map(({ candidate }) => candidate);
 
+        // Can't eliminate all the candidates!!!
+        if (candidatesToEliminate.length === candidates.length) {
+            report += `It's a ${candidates.length}-way tie!\n`;
+            return report;
+        }
+
         report += 'The following candidates have the lowest number of votes and are eliminated:\n\n';
         for (const candidate of candidatesToEliminate) {
             report += `- ${candidateNames[candidate]}\n`;
@@ -141,7 +147,7 @@ function generateReport(csv) {
             return report;
         }
 
-        report += 'No candidate reached the 50% threshold to win.\n\n';
+        report += 'No candidate surpassed the 50% threshold to win.\n\n';
         const eliminatedBallots = initialVotes.length - votes.length;
         report += `${(100 * eliminatedBallots / initialVotes.length).toFixed(2)}% (${eliminatedBallots}/${initialVotes.length}) of ballots cast have been eliminated so far.\n\n`;
         printTable(distribution);
