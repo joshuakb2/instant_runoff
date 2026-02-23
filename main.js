@@ -23,10 +23,36 @@ function main() {
     markdownToPdf(report).then(buffer => fs.writeFileSync(pdfFilePath, buffer));
 }
 
+function checkInvalidInput(lines) {
+    const headers = lines[0];
+
+    let foundProblem = false;
+
+    for (let i = 1; i < lines.length; i++) {
+        if (lines[i].length > headers.length) {
+            foundProblem = true;
+            console.error(`Line #${i + 1} has more columns than there are candidates.`);
+        }
+
+        const rankings = lines[i].filter(Boolean).map(x => +x).sort((a, b) => a - b);
+        for (let j = 0; j < rankings.length; j++) {
+            if (rankings[j] !== j + 1) {
+                foundProblem = true;
+                console.error(`Line #${i + 1} has invalid rankings.`);
+                break;
+            }
+        }
+    }
+
+    if (foundProblem) process.exit(1);
+}
+
 function generateReport(csv) {
     let report = '';
 
     const lines = csv.split('\n').filter(Boolean).map(s => s.split(','));
+    checkInvalidInput(lines);
+
     const candidateNames = lines[0];
     const initialVotes = lines.slice(1).map(arr => {
         const rankings = [];
