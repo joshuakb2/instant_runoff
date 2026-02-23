@@ -1,4 +1,5 @@
 node_modules
 *.pdf
 *.csv
+!example.csv
 *.js

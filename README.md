@@ -17,3 +17,5 @@ npm run make
 
 The input file should be a basic CSV file. The first line should be the names of the candidates and every line after that should be a single ballot.
 Each item in a ballot row should either be empty or an integer, where 1 is the highest preference and higher numbers indicate lower priority rankings.
+
+See `example.csv` for an example of valid input data.
