@@ -59,13 +59,16 @@ type Candidate = number;
  */
 type Ballot = number[];
 
-type Distribution = ShareOfVotes[];
-
-type ShareOfVotes = {
+type Distribution = {
     candidate: Candidate;
     count: number;
     percent: number;
-};
+}[];
+
+type Redistribution = {
+    candidate: Candidate | null;
+    count: number;
+}[];
 
 function generateReport(csv: string): string {
     let report = '';
@@ -143,22 +146,31 @@ function generateReport(csv: string): string {
      * that candidate from all ballots. Any ballot that becomes empty is removed from the list of
      * ballots. Mutates candidates and ballots.
      */
-    function removeCandidate(toRemove: Candidate) {
+    function removeCandidate(toRemove: Candidate): Redistribution {
+        const redistribution = new Map<Candidate | null, number>();
         candidates = candidates.filter(c => c != toRemove);
 
         for (let i = 0; i < ballots.length; i++) {
             const ballot = ballots[i]!;
             for (let j = 0; j < ballot.length; j++) {
-                if (toRemove === ballot[j]!) {
+                if (toRemove === ballot[j]) {
                     ballot.splice(j, 1);
-                    j--;
+                    if (j === 0) {
+                        if (ballot.length > 0) {
+                            redistribution.set(ballot[0]!, (redistribution.get(ballot[0]!) ?? 0) + 1);
+                        }
+                        else {
+                            redistribution.set(null, (redistribution.get(null) ?? 0) + 1);
+                            ballots.splice(i, 1);
+                            i--;
+                        }
+                    }
+                    break;
                 }
             }
-            if (ballot.length === 0) {
-                ballots.splice(i, 1);
-                i--;
-            }
         }
+
+        return redistribution.entries().map(([candidate, count]) => ({ candidate, count })).toArray().sort((a, b) => a.candidate == null ? 1 : b.candidate == null ? -1 : b.count - a.count);
     }
 
     const candidatesWithNoVotes: Candidate[] = distribution
@@ -189,7 +201,19 @@ function generateReport(csv: string): string {
 
         report += `"${candidateNames[candidateToEliminate]}" is in last place and is eliminated.\n\n`;
 
-        removeCandidate(candidateToEliminate);
+        const redistribution = removeCandidate(candidateToEliminate);
+
+        report += 'Ballot redistribution:\n';
+        for (const { candidate, count } of redistribution) {
+            const plural = count !== 1;
+            if (candidate == null) {
+                report += `- ${count} ${plural ? 'ballots are' : 'ballot is'} discarded.\n`;
+            }
+            else {
+                report += `- "${candidateNames[candidate]}" gains ${count} ${plural ? 'votes' : 'vote'}.\n`;
+            }
+        }
+        report += '\n';
 
         report += `## Phase ${phase}\n\n`;
 
