@@ -139,17 +139,17 @@ function generateReport(csv: string): string {
     let distribution: Distribution = initialDistribution;
 
     /**
-     * Removes the specified candidates from the list of candidates still in the running and removes
-     * those candidates from all ballots. Any ballot that becomes empty is removed from the list of
+     * Removes the specified candidate from the list of candidates still in the running and removes
+     * that candidate from all ballots. Any ballot that becomes empty is removed from the list of
      * ballots. Mutates candidates and ballots.
      */
-    function removeCandidates(toRemove: Candidate[]) {
-        candidates = candidates.filter(c => !toRemove.includes(c));
+    function removeCandidate(toRemove: Candidate) {
+        candidates = candidates.filter(c => c != toRemove);
 
         for (let i = 0; i < ballots.length; i++) {
             const ballot = ballots[i]!;
             for (let j = 0; j < ballot.length; j++) {
-                if (toRemove.includes(ballot[j]!)) {
+                if (toRemove === ballot[j]!) {
                     ballot.splice(j, 1);
                     j--;
                 }
@@ -171,7 +171,9 @@ function generateReport(csv: string): string {
             report += `- ${candidateNames[candidate]}\n`;
         }
         report += '\n';
-        removeCandidates(candidatesWithNoVotes);
+        for (const candidate of candidatesWithNoVotes) {
+            removeCandidate(candidate);
+        }
         distribution = getDistribution(candidates, ballots);
     }
 
@@ -181,24 +183,13 @@ function generateReport(csv: string): string {
     while (true) {
         phase += 1;
 
-        // First, eliminate all candidates that are tied for last place.
+        // First, eliminate the last-place candidate.
 
-        const lowestCount = Math.min(...distribution.map(x => x.count));
-        const candidatesToEliminate = distribution.filter(({ count }) => count === lowestCount).map(({ candidate }) => candidate);
+        const candidateToEliminate = distribution.at(-1)!.candidate;
 
-        // If we're about the eliminate all the remaining candidates, it must be a tie.
-        if (candidatesToEliminate.length === candidates.length) {
-            report += `It's a ${candidates.length}-way tie!\n`;
-            return report;
-        }
+        report += `"${candidateNames[candidateToEliminate]}" is in last place and is eliminated.\n\n`;
 
-        report += 'The following candidates have the lowest number of votes and are eliminated:\n\n';
-        for (const candidate of candidatesToEliminate) {
-            report += `- ${candidateNames[candidate]}\n`;
-        }
-        report += '\n';
-
-        removeCandidates(candidatesToEliminate);
+        removeCandidate(candidateToEliminate);
 
         report += `## Phase ${phase}\n\n`;
 
