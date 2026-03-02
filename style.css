@@ -1,0 +1,27 @@
+@media print {
+  @page {
+    margin: 0.5in;
+  }
+}
+
+h1 {
+    text-align: center;
+}
+
+h2 {
+    margin-top: 0.5in;
+}
+
+section {
+    break-inside: avoid-page;
+}
+
+table {
+    border: solid black 2px;
+    border-collapse: collapse;
+}
+
+th, td {
+    border: solid black 1px;
+    padding: 2px;
+}

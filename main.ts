@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-import * as fs from 'fs';
-import { markdownToPdf } from '@mdpdf/mdpdf';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { convert } from 'mdpdf';
 
 function main(): void {
     const args = process.argv.slice(2);
@@ -21,7 +22,14 @@ function main(): void {
 
     const csv = fs.readFileSync(csvFilePath).toString();
     const report = generateReport(csv);
-    markdownToPdf(report).then(buffer => fs.writeFileSync(pdfFilePath, buffer));
+
+    fs.writeFileSync('report.md', report);
+    convert({
+        source: 'report.md',
+        destination: pdfFilePath,
+        styles: [path.join(import.meta.dirname, 'style.css')],
+    });
+    fs.unlinkSync('report.md');
 }
 
 function checkInvalidInput(lines: string[][]): void {
@@ -121,6 +129,8 @@ function generateReport(csv: string): string {
     const initialCandidates: Candidate[] = Array.from({ length: candidateNames.length }, (_, i) => i);
     const initialDistribution: Distribution = getDistribution(initialCandidates, initialBallots);
 
+    report += '\n<section markdown="1">\n\n';
+
     report += '## Initial results (phase 1)\n\n';
 
     // If any candidate already has over 50%, no instant runoff is necessary
@@ -213,7 +223,7 @@ function generateReport(csv: string): string {
                 report += `- "${candidateNames[candidate]}" gains ${count} ${plural ? 'votes' : 'vote'}.\n`;
             }
         }
-        report += '\n';
+        report += '\n</section>\n\n<section markdown="1">\n\n';
 
         report += `## Phase ${phase}\n\n`;
 
@@ -227,6 +237,7 @@ function generateReport(csv: string): string {
             const eliminatedBallots = initialBallots.length - ballots.length;
             report += `${(100 * eliminatedBallots / initialBallots.length).toFixed(2)}% (${eliminatedBallots}/${initialBallots.length}) of ballots cast were eliminated.\n\n`;
             printTable(distribution);
+            report += '\n</section>\n\n';
             return report;
         }
 
@@ -236,6 +247,7 @@ function generateReport(csv: string): string {
             const eliminatedBallots = initialBallots.length - ballots.length;
             report += `${(100 * eliminatedBallots / initialBallots.length).toFixed(2)}% (${eliminatedBallots}/${initialBallots.length}) of ballots cast were eliminated.\n\n`;
             printTable(distribution);
+            report += '\n</section>\n\n';
             return report;
         }
 
