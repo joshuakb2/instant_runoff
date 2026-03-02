@@ -99,7 +99,7 @@ function generateReport(csv: string): string {
             return {
                 candidate,
                 count,
-                percent: 100 * count / ballots.length,
+                percent: 100 * count / initialBallots.length,
             };
         });
 
@@ -209,6 +209,15 @@ function generateReport(csv: string): string {
         // If any candidate has a majority of the votes, that candidate wins and we're done.
         if (distribution[0]!.percent > 50) {
             report += `"${candidateNames[distribution[0]!.candidate]}" wins with ${distribution[0]!.percent.toFixed(2)}% of the vote.\n\n`;
+            const eliminatedBallots = initialBallots.length - ballots.length;
+            report += `${(100 * eliminatedBallots / initialBallots.length).toFixed(2)}% (${eliminatedBallots}/${initialBallots.length}) of ballots cast were eliminated.\n\n`;
+            printTable(distribution);
+            return report;
+        }
+
+        // If there is only one remaining candidate, they win by default.
+        if (distribution.length === 1) {
+            report += `"${candidateNames[distribution[0]!.candidate]}" wins by process of elimination with ${distribution[0]!.percent.toFixed(2)}% of the vote.\n\n`;
             const eliminatedBallots = initialBallots.length - ballots.length;
             report += `${(100 * eliminatedBallots / initialBallots.length).toFixed(2)}% (${eliminatedBallots}/${initialBallots.length}) of ballots cast were eliminated.\n\n`;
             printTable(distribution);
