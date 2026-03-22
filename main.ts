@@ -81,7 +81,7 @@ type Redistribution = {
 function generateReport(csv: string): string {
     let report = '';
 
-    const lines = csv.split('\n').filter(Boolean).map(s => s.split(','));
+    const lines = csv.split(/[\r\n]+/).filter(Boolean).map(s => s.split(','));
     checkInvalidInput(lines);
 
     const candidateNames: string[] = lines[0]!;
